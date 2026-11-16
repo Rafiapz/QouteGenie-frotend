@@ -44,3 +44,13 @@ export interface QuotationComparisonSummary {
     variancePercent: number;
   }[];
 }
+
+export interface QuoteComparisonRecord {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string | null;
+  quoteIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}

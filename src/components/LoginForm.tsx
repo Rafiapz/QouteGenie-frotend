@@ -54,7 +54,7 @@ export default function LoginForm() {
       const storedToken = localStorage.getItem("quotegenie_token");
 
       if (storedUser || storedToken) {
-        router.replace("/dashboard");
+        router.replace("/workspace");
         return;
       }
 
@@ -62,7 +62,7 @@ export default function LoginForm() {
         const profile = await fetchCurrentProfile();
         if (profile && isMounted) {
           localStorage.setItem("quotegenie_user", JSON.stringify(profile));
-          router.replace("/dashboard");
+          router.replace("/workspace");
           return;
         }
       } catch {
@@ -110,7 +110,7 @@ export default function LoginForm() {
       }
 
       setLoggedInOrg(response.data);
-      router.push("/dashboard");
+      router.push("/workspace");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setErrorMessage(err.message);
@@ -136,7 +136,7 @@ export default function LoginForm() {
         <div className="w-12 h-12 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
         <h3 className="text-base font-bold text-slate-900">Checking Active Session</h3>
         <p className="text-xs text-slate-500 mt-1">
-          You are already signed in. Redirecting to your dashboard...
+          You are already signed in. Redirecting to your workspace...
         </p>
       </div>
     );
@@ -207,11 +207,11 @@ export default function LoginForm() {
         {/* Action Buttons */}
         <div className="mt-8 flex flex-col gap-3 relative z-10">
           <Link
-            href="/#workbench"
+            href="/workspace"
             className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm text-center shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2"
           >
             <ChartBarIcon className="w-4 h-4" />
-            <span>Open Quote Analyzer Workbench</span>
+            <span>Open Procurement Workspace</span>
             <ArrowRightIcon className="w-4 h-4" />
           </Link>
 

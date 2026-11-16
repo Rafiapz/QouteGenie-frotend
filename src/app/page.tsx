@@ -162,7 +162,7 @@ const FAQS = [
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-indigo-600 selection:text-white flex flex-col font-sans">
-      {/* Redirect logged-in users directly to dashboard */}
+      {/* Redirect logged-in users directly to workspace */}
       <LandingAuthRedirect />
 
       {/* Top Navigation */}
@@ -206,10 +206,10 @@ export default function HomePage() {
           {/* Action Buttons */}
           <div className="flex items-center gap-4">
             <Link
-              href="/dashboard"
+              href="/workspace"
               className="text-xs sm:text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors hidden lg:block"
             >
-              Dashboard
+              Workspace
             </Link>
             <Link
               href="/login"

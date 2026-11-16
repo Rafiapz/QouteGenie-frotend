@@ -74,7 +74,7 @@ export default function RegisterForm() {
       const storedToken = localStorage.getItem("quotegenie_token");
 
       if (storedUser || storedToken) {
-        router.replace("/dashboard");
+        router.replace("/workspace");
         return;
       }
 
@@ -82,7 +82,7 @@ export default function RegisterForm() {
         const profile = await fetchCurrentProfile();
         if (profile && isMounted) {
           localStorage.setItem("quotegenie_user", JSON.stringify(profile));
-          router.replace("/dashboard");
+          router.replace("/workspace");
           return;
         }
       } catch {
@@ -148,7 +148,7 @@ export default function RegisterForm() {
       }
 
       setRegisteredOrg(response.data);
-      router.push("/dashboard");
+      router.push("/workspace");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setErrorMessage(err.message);
@@ -184,7 +184,7 @@ export default function RegisterForm() {
         <div className="w-12 h-12 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
         <h3 className="text-base font-bold text-slate-900">Checking Active Session</h3>
         <p className="text-xs text-slate-500 mt-1">
-          You are already signed in. Redirecting to your dashboard...
+          You are already signed in. Redirecting to your workspace...
         </p>
       </div>
     );
@@ -270,10 +270,10 @@ export default function RegisterForm() {
             Register Another
           </button>
           <Link
-            href="/dashboard"
+            href="/workspace"
             className="flex-1 py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm text-center shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2"
           >
-            <span>Go to Dashboard</span>
+            <span>Enter Workspace</span>
             <ArrowRightIcon className="w-4 h-4" />
           </Link>
         </div>

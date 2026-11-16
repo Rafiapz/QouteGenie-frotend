@@ -6,7 +6,7 @@ import { fetchCurrentProfile } from "../services/api";
 
 /**
  * Invisible client component mounted on the landing page ("/")
- * to detect logged-in users and redirect them directly to "/dashboard".
+ * to detect logged-in users and redirect them directly to "/workspace".
  * Renders null so it does not alter server-rendered SEO HTML for guest visitors.
  */
 export default function LandingAuthRedirect() {
@@ -18,7 +18,7 @@ export default function LandingAuthRedirect() {
     const storedToken = localStorage.getItem("quotegenie_token");
 
     if (storedUser || storedToken) {
-      router.replace("/dashboard");
+      router.replace("/workspace");
       return;
     }
 
@@ -26,7 +26,7 @@ export default function LandingAuthRedirect() {
     fetchCurrentProfile().then((profile) => {
       if (profile) {
         localStorage.setItem("quotegenie_user", JSON.stringify(profile));
-        router.replace("/dashboard");
+        router.replace("/workspace");
       }
     });
   }, [router]);

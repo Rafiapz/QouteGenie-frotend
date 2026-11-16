@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   TruckIcon,
   PlusIcon,
@@ -39,6 +40,11 @@ export function SupplierManagement() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch suppliers on mount
   const loadSuppliers = async (showLoadingSpinner = true) => {
@@ -267,12 +273,15 @@ export function SupplierManagement() {
                     key={supplier.id}
                     className="hover:bg-slate-50/60 transition-colors"
                   >
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2.5">
+                    <td className="py-3 px-4 max-w-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
                           {getInitials(supplier.name)}
                         </div>
-                        <span className="font-semibold text-slate-900">
+                        <span
+                          className="font-semibold text-slate-900 truncate"
+                          title={supplier.name}
+                        >
                           {supplier.name}
                         </span>
                       </div>
@@ -316,8 +325,8 @@ export function SupplierManagement() {
       )}
 
       {/* Add Supplier Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs animate-in fade-in duration-100">
+      {mounted && isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-100">
           <div
             className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 relative"
             onClick={(e) => e.stopPropagation()}
@@ -328,7 +337,7 @@ export function SupplierManagement() {
               <button
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
                 <XIcon className="w-4 h-4" />
               </button>
@@ -408,7 +417,7 @@ export function SupplierManagement() {
                   type="button"
                   onClick={handleCloseModal}
                   disabled={isSubmitting}
-                  className="px-3 py-1.5 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -422,7 +431,8 @@ export function SupplierManagement() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

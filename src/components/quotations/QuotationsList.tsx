@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   DocumentTextIcon,
   SearchIcon,
@@ -42,6 +43,11 @@ export function QuotationsList({
   const [quotePendingDelete, setQuotePendingDelete] = useState<Quotation | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const uniqueSuppliers = useMemo(() => {
     const map = new Map<string, string>();
@@ -256,14 +262,14 @@ export function QuotationsList({
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => {}}
-                        className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 pointer-events-none"
+                        className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 pointer-events-none shrink-0"
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="font-mono text-[10px] text-slate-400 block truncate">
                           {quote.quoteNumber}
                         </span>
@@ -335,24 +341,24 @@ export function QuotationsList({
       )}
 
       {/* Quotation Detail Modal */}
-      {activePreviewQuote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs animate-in fade-in duration-100">
+      {mounted && activePreviewQuote && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-100">
           <div
             className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl border border-slate-100 relative max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-              <div>
-                <span className="font-mono text-[11px] text-slate-400 block">
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="min-w-0 flex-1">
+                <span className="font-mono text-[11px] text-slate-400 block truncate">
                   {activePreviewQuote.quoteNumber}
                 </span>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-bold text-slate-900 break-words" title={activePreviewQuote.supplierName}>
                   {activePreviewQuote.supplierName}
                 </h3>
               </div>
               <button
                 onClick={() => setActivePreviewQuote(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg shrink-0 cursor-pointer"
               >
                 <XIcon className="w-4 h-4" />
               </button>
@@ -435,12 +441,13 @@ export function QuotationsList({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Confirmation Modal */}
-      {quotePendingDelete && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+      {mounted && quotePendingDelete && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div
             className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
@@ -453,13 +460,13 @@ export function QuotationsList({
                 <h3 className="text-sm font-bold text-slate-900">
                   Delete Quotation
                 </h3>
-                <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                <p className="text-xs text-slate-600 mt-1.5 leading-relaxed break-words">
                   Are you sure you want to delete quotation{" "}
                   <strong className="text-slate-900 font-mono">
                     {quotePendingDelete.quoteNumber}
                   </strong>{" "}
                   from{" "}
-                  <strong className="text-slate-900">
+                  <strong className="text-slate-900 break-words">
                     {quotePendingDelete.supplierName}
                   </strong>
                   ?
@@ -517,7 +524,8 @@ export function QuotationsList({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

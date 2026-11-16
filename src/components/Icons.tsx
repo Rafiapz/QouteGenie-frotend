@@ -438,3 +438,69 @@ export function MenuIcon({ className = "w-5 h-5" }: { className?: string }) {
     </svg>
   );
 }
+
+export function FolderIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+      />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M19 9l-7 7-7-7"
+      />
+    </svg>
+  );
+}
+
+export function ChevronUpIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M5 15l7-7 7 7"
+      />
+    </svg>
+  );
+}
+
+export function TrophyIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M8 21h8m-4-4v4m-5-17h10a1 1 0 011 1v2a6 6 0 01-6 6v0a6 6 0 01-6-6V5a1 1 0 011-1zm-1 3H4a2 2 0 00-2 2v1a4 4 0 004 4h1m11-7h3a2 2 0 012 2v1a4 4 0 01-4 4h-1"
+      />
+    </svg>
+  );
+}
+
+export function AwardIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M12 15l-3.5 2 1-4-3-3 4-.5L12 6l1.5 3.5 4 .5-3 3 1 4L12 15z"
+      />
+      <circle cx="12" cy="12" r="9" strokeWidth={1.8} />
+    </svg>
+  );
+}
