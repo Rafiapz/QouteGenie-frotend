@@ -33,6 +33,7 @@ import {
   removeComparisonFromLocalCache,
 } from "@/services/comparisonStorage";
 import { formatCurrency } from "@/utils/format";
+import PlanLimitModal from "@/components/common/PlanLimitModal";
 
 interface QuoteComparisonViewProps {
   allQuotations: Quotation[];
@@ -120,6 +121,16 @@ export function QuoteComparisonView({
   );
   const [isLoadingComparisons, setIsLoadingComparisons] = useState(false);
   const [comparisonNotice, setComparisonNotice] = useState<string | null>(null);
+  const [planLimitModal, setPlanLimitModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    limitType: "comparisons" | "quotes_per_comparison" | "generic";
+  }>({
+    isOpen: false,
+    message: "",
+    limitType: "generic",
+  });
 
   // Sync with initialComparisonId if prop changes
   const prevInitialIdRef = useRef<string | null | undefined>(initialComparisonId);
@@ -226,38 +237,6 @@ export function QuoteComparisonView({
       }
       return;
     }
-
-    // If not matching and not yet auto-saved in this session, save to database!
-    if (!autoSavedRef.current.has(currentSorted)) {
-      autoSavedRef.current.add(currentSorted);
-
-      const quotesToCompare = allQuotations.filter((q) =>
-        selectedIds.includes(q.id),
-      );
-      const autoName = generateDefaultComparisonName(quotesToCompare);
-
-      createComparisonInApi({
-        name: autoName,
-        quoteIds: selectedIds,
-      })
-        .then((created) => {
-          if (created && created.id) {
-            setComparisons((prev) => {
-              const updated = [
-                created,
-                ...prev.filter((c) => c.id !== created.id),
-              ];
-              saveLocalStoredComparisons(updated);
-              return updated;
-            });
-            setActiveComparisonId(created.id);
-            showNotice(`Comparison "${created.name}" saved to database.`);
-          }
-        })
-        .catch((err) => {
-          console.warn("Auto-save comparison error:", err);
-        });
-    }
   }, [selectedIds, comparisons, allQuotations, activeComparisonId]);
 
 
@@ -312,6 +291,25 @@ export function QuoteComparisonView({
       alert("Please select at least 2 quotations to compare.");
       return;
     }
+    if (newModalSelectedQuoteIds.length > 3) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Quotation Limit Exceeded",
+        message: "You can only compare up to 3 quotations at a time on the Free plan.",
+        limitType: "quotes_per_comparison",
+      });
+      return;
+    }
+    if (comparisons.length >= 3) {
+      setShowNewModal(false);
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Comparison Limit Reached",
+        message: "You have reached the maximum limit of 3 comparisons on the Free plan. To create a new comparison, please delete an existing one or upgrade your account.",
+        limitType: "comparisons",
+      });
+      return;
+    }
 
     const name =
       newComparisonName.trim() ||
@@ -336,6 +334,22 @@ export function QuoteComparisonView({
       setShowNewModal(false);
       showNotice(`Comparison "${created.name}" created and saved.`);
     } catch (err: any) {
+      if (
+        err.status === 403 ||
+        err.message?.toLowerCase().includes("free plan") ||
+        err.message?.toLowerCase().includes("limit")
+      ) {
+        setShowNewModal(false);
+        setPlanLimitModal({
+          isOpen: true,
+          title: "Free Plan Limit",
+          message: err.message || "You have reached the limits of the Free plan.",
+          limitType: err.message?.toLowerCase().includes("3 quotation")
+            ? "quotes_per_comparison"
+            : "comparisons",
+        });
+        return;
+      }
       alert(err.message || "Failed to save comparison to database.");
     } finally {
       setIsProcessingApi(false);
@@ -469,35 +483,13 @@ export function QuoteComparisonView({
     }
   };
 
-  // Quick save current modified selection as a new comparison project
-  const handleSaveCurrentSelection = async () => {
+  // Quick save current modified selection as a new comparison project (prompts for name)
+  const handleSaveCurrentSelection = () => {
     if (selectedIds.length < 2) {
       alert("Select at least 2 quotes to save a comparison.");
       return;
     }
-    const quotes = allQuotations.filter((q) => selectedIds.includes(q.id));
-    const name = generateDefaultComparisonName(quotes);
-
-    setIsProcessingApi(true);
-    try {
-      const created = await createComparisonInApi({
-        name,
-        quoteIds: selectedIds,
-      });
-
-      const updated = [
-        created,
-        ...comparisons.filter((c) => c.id !== created.id),
-      ];
-      setComparisons(updated);
-      saveLocalStoredComparisons(updated);
-      setActiveComparisonId(created.id);
-      showNotice(`Comparison "${created.name}" saved to database.`);
-    } catch (err: any) {
-      alert(err.message || "Failed to save comparison.");
-    } finally {
-      setIsProcessingApi(false);
-    }
+    handleOpenCreateModal();
   };
 
   // Comparative calculations & analytics
@@ -1670,12 +1662,20 @@ export function QuoteComparisonView({
             <div className="space-y-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Comparison Name
+                  Comparison Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
+                  autoFocus
+                  required
                   value={newComparisonName}
                   onChange={(e) => setNewComparisonName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newModalSelectedQuoteIds.length >= 2 && !isProcessingApi && newComparisonName.trim()) {
+                      e.preventDefault();
+                      handleConfirmCreateComparison();
+                    }
+                  }}
                   placeholder="e.g. Structural Steel Sourcing Q4"
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                 />
@@ -2124,6 +2124,14 @@ export function QuoteComparisonView({
         </div>,
         document.body
       )}
+      {/* Plan Limit Modal */}
+      <PlanLimitModal
+        isOpen={planLimitModal.isOpen}
+        onClose={() => setPlanLimitModal((prev) => ({ ...prev, isOpen: false }))}
+        title={planLimitModal.title}
+        message={planLimitModal.message}
+        limitType={planLimitModal.limitType}
+      />
     </div>
   );
 }

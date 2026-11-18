@@ -83,7 +83,7 @@ const PRESET_PROPOSALS: ProposalScenario[] = [
         quantity: 120,
         variancePercent: 30.3,
         riskLevel: "high",
-        rationale: "Quoted rate is 30% above the 75th percentile for US East cloud architects ($165/hr).",
+        rationale: "Quoted rate is 30% above the 75th percentile for cloud architects (₹165/hr).",
       },
       {
         id: "c-2",
@@ -95,7 +95,7 @@ const PRESET_PROPOSALS: ProposalScenario[] = [
         quantity: 1,
         variancePercent: 39.3,
         riskLevel: "high",
-        rationale: "Comparable AWS IaC automation deliveries average $13,500 - $14,500 across 3,400 audits.",
+        rationale: "Comparable AWS IaC automation deliveries average ₹13,500 - ₹14,500 across 3,400 audits.",
       },
       {
         id: "c-3",
@@ -192,7 +192,7 @@ const PRESET_PROPOSALS: ProposalScenario[] = [
         quantity: 320,
         variancePercent: 34.8,
         riskLevel: "high",
-        rationale: "Quoted $155/hr is in the 92nd percentile for cross-platform app developers.",
+        rationale: "Quoted ₹155/hr is in the 92nd percentile for cross-platform app developers.",
       },
       {
         id: "a-2",
@@ -256,7 +256,7 @@ const PRESET_PROPOSALS: ProposalScenario[] = [
       totalPrice: 104000,
       scopeMatch: 95,
       warranty: "60 days post-launch",
-      verdict: "PulseMobile offers a balanced payment schedule and lower blended rate card ($118/hr vs $155/hr).",
+      verdict: "PulseMobile offers a balanced payment schedule and lower blended rate card (₹118/hr vs ₹155/hr).",
     },
   },
   {
@@ -280,7 +280,7 @@ const PRESET_PROPOSALS: ProposalScenario[] = [
         quantity: 4800,
         variancePercent: 23.7,
         riskLevel: "high",
-        rationale: "Class-A warehouse average in current region is $19.80 for commitments above 3,000 pallets.",
+        rationale: "Class-A warehouse average in current region is ₹19.80 for commitments above 3,000 pallets.",
       },
       {
         id: "l-2",
@@ -349,9 +349,9 @@ export default function QuoteAnalyzerWorkbench() {
 
   // Counter-offer letter generation
   const highRiskItems = selectedScenario.items.filter((i) => i.riskLevel === "high");
-  const formattedTotal = `$${formatNumber(selectedScenario.totalQuoted)}`;
-  const formattedSavings = `$${formatNumber(selectedScenario.potentialSavings)}`;
-  const targetCounterPrice = `$${formatNumber(
+  const formattedTotal = `₹${formatNumber(selectedScenario.totalQuoted)}`;
+  const formattedSavings = `₹${formatNumber(selectedScenario.potentialSavings)}`;
+  const targetCounterPrice = `₹${formatNumber(
     selectedScenario.totalQuoted - selectedScenario.potentialSavings
   )}`;
 
@@ -368,7 +368,7 @@ After conducting a commercial market analysis across our procurement benchmark d
 ${highRiskItems
   .map(
     (i) =>
-      `• ${i.name}: Currently quoted at $${i.quotedRate}/${i.unit}. Our independent benchmark median is $${i.benchmarkRate}/${i.unit} (a +${i.variancePercent.toFixed(1)}% variance). Target rate: $${i.benchmarkRate}/${i.unit}.`
+      `• ${i.name}: Currently quoted at ₹${i.quotedRate}/${i.unit}. Our independent benchmark median is ₹${i.benchmarkRate}/${i.unit} (a +${i.variancePercent.toFixed(1)}% variance). Target rate: ₹${i.benchmarkRate}/${i.unit}.`
   )
   .join("\n")}
 
@@ -393,7 +393,7 @@ Our procurement intelligence engine benchmarks vendor rates across 1.2M+ verifie
 ${highRiskItems
   .map(
     (i) =>
-      `- ${i.name}: Quoted $${i.quotedRate}/${i.unit} vs Industry Median $${i.benchmarkRate}/${i.unit} (+${i.variancePercent.toFixed(1)}% premium).`
+      `- ${i.name}: Quoted ₹${i.quotedRate}/${i.unit} vs Industry Median ₹${i.benchmarkRate}/${i.unit} (+${i.variancePercent.toFixed(1)}% premium).`
   )
   .join("\n")}
 
@@ -499,7 +499,7 @@ Strategic Sourcing Directorate`;
           </div>
           <div className="mt-2">
             <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 font-mono">
-              ${formatNumber(selectedScenario.totalQuoted)}
+              ₹{formatNumber(selectedScenario.totalQuoted)}
             </span>
             <p className="text-[11px] text-slate-500 mt-0.5 truncate">
               {selectedScenario.vendorCategory}
@@ -515,7 +515,7 @@ Strategic Sourcing Directorate`;
           </div>
           <div className="mt-2">
             <span className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-700 font-mono">
-              ${formatNumber(selectedScenario.potentialSavings)}
+              ₹{formatNumber(selectedScenario.potentialSavings)}
             </span>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="inline-block text-[11px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">
@@ -708,10 +708,10 @@ Strategic Sourcing Directorate`;
                           {item.category}
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
-                          ${formatNumber(item.quotedRate)}/{item.unit}
+                          ₹{formatNumber(item.quotedRate)}/{item.unit}
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono text-slate-600 whitespace-nowrap">
-                          ${formatNumber(item.benchmarkRate)}/{item.unit}
+                          ₹{formatNumber(item.benchmarkRate)}/{item.unit}
                         </td>
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
                           <span
@@ -729,7 +729,7 @@ Strategic Sourcing Directorate`;
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
-                          ${formatNumber(item.benchmarkRate)}/{item.unit}
+                          ₹{formatNumber(item.benchmarkRate)}/{item.unit}
                         </td>
                       </tr>
                     );
@@ -751,7 +751,7 @@ Strategic Sourcing Directorate`;
                   <p className="text-xs text-slate-600">
                     Apply target rates to recover{" "}
                     <span className="text-emerald-700 font-bold">
-                      ${formatNumber(selectedScenario.potentialSavings)}
+                      ₹{formatNumber(selectedScenario.potentialSavings)}
                     </span>{" "}
                     without reducing scope or deliverables.
                   </p>
@@ -860,7 +860,7 @@ Strategic Sourcing Directorate`;
                     </h4>
                   </div>
                   <span className="text-xl font-black font-mono text-slate-900">
-                    ${formatNumber(selectedScenario.totalQuoted)}
+                    ₹{formatNumber(selectedScenario.totalQuoted)}
                   </span>
                 </div>
 
@@ -906,7 +906,7 @@ Strategic Sourcing Directorate`;
                     </h4>
                   </div>
                   <span className="text-xl font-black font-mono text-emerald-700">
-                    ${formatNumber(selectedScenario.competitor.totalPrice)}
+                    ₹{formatNumber(selectedScenario.competitor.totalPrice)}
                   </span>
                 </div>
 
@@ -926,7 +926,7 @@ Strategic Sourcing Directorate`;
                   <div className="flex justify-between py-1.5 text-slate-700">
                     <span className="text-slate-500">Total Net Cost Savings</span>
                     <span className="font-bold text-emerald-700 font-mono">
-                      $
+                      ₹
                       {formatNumber(
                         selectedScenario.totalQuoted -
                         selectedScenario.competitor.totalPrice

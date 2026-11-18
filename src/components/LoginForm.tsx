@@ -34,14 +34,17 @@ export default function LoginForm() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [loggedInOrg, setLoggedInOrg] = useState<LoggedInOrganization | null>(null);
+  const [loggedInOrg, setLoggedInOrg] = useState<LoggedInOrganization | null>(
+    null,
+  );
   const [showForgotNotice, setShowForgotNotice] = useState(false);
 
   // Check if user is already signed in
   const [isCheckingAuth, setIsCheckingAuth] = useState(() => {
     if (typeof window !== "undefined") {
       return Boolean(
-        localStorage.getItem("quotegenie_user") || localStorage.getItem("quotegenie_token")
+        localStorage.getItem("quotegenie_user") ||
+        localStorage.getItem("quotegenie_token"),
       );
     }
     return false;
@@ -134,7 +137,9 @@ export default function LoginForm() {
     return (
       <div className="w-full max-w-md mx-auto p-10 rounded-3xl bg-white border border-slate-200 shadow-xl shadow-slate-200/60 text-center relative overflow-hidden">
         <div className="w-12 h-12 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
-        <h3 className="text-base font-bold text-slate-900">Checking Active Session</h3>
+        <h3 className="text-base font-bold text-slate-900">
+          Checking Active Session
+        </h3>
         <p className="text-xs text-slate-500 mt-1">
           You are already signed in. Redirecting to your workspace...
         </p>
@@ -169,7 +174,10 @@ export default function LoginForm() {
           </h2>
           <p className="text-sm text-slate-600 mt-1.5 max-w-sm mx-auto">
             You are signed in to{" "}
-            <span className="text-slate-900 font-semibold">{loggedInOrg.companyName}</span>.
+            <span className="text-slate-900 font-semibold">
+              {loggedInOrg.companyName}
+            </span>
+            .
           </p>
         </div>
 
@@ -185,7 +193,9 @@ export default function LoginForm() {
 
           <div className="flex justify-between items-center py-1 border-b border-slate-200">
             <span className="text-slate-500 font-medium">Work Email</span>
-            <span className="font-mono text-slate-800">{loggedInOrg.email}</span>
+            <span className="font-mono text-slate-800">
+              {loggedInOrg.email}
+            </span>
           </div>
 
           <div className="flex justify-between items-center py-1 border-b border-slate-200">
@@ -233,22 +243,21 @@ export default function LoginForm() {
       <div className="absolute top-0 right-0 w-72 h-72 bg-indigo-50/70 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="mb-8 relative z-10">
-        <span className="text-xs uppercase font-bold tracking-widest text-indigo-600">
-          QuoteGenie Access
-        </span>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
-          Sign In to Your Account
+      <div className="mb-6 relative z-10">
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+          Sign In
         </h2>
-        <p className="mt-2 text-sm text-slate-500">
-          Enter your organization credentials to analyze quotes and benchmark rates.
+        <p className="mt-1 text-sm text-slate-500">
+          Enter your email and password to access your account.
         </p>
       </div>
 
       {/* Error Alert */}
       {errorMessage && (
         <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3 relative z-10">
-          <span className="text-rose-600 font-black text-base leading-none mt-0.5">!</span>
+          <span className="text-rose-600 font-black text-base leading-none mt-0.5">
+            !
+          </span>
           <div className="flex-1 text-xs sm:text-sm">{errorMessage}</div>
         </div>
       )}
@@ -258,8 +267,15 @@ export default function LoginForm() {
         <div className="mb-6 p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs flex items-start gap-2.5 relative z-10">
           <span className="text-indigo-600 font-bold">ℹ</span>
           <div className="flex-1">
-            To reset your organization password, please contact your workspace administrator or email{" "}
-            <span className="font-semibold underline">support@quotegenie.io</span>.
+            To reset your organization password, please contact your workspace
+            administrator or email{" "}
+            <a
+              href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "rafikandathuvayal@gmail.com"}`}
+              className="font-semibold underline hover:text-indigo-700"
+            >
+              {process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "rafikandathuvayal@gmail.com"}
+            </a>
+            .
           </div>
         </div>
       )}
@@ -322,18 +338,6 @@ export default function LoginForm() {
         </div>
 
         {/* Remember Me Checkbox */}
-        <div className="flex items-center gap-2 pt-1">
-          <input
-            id="remember"
-            type="checkbox"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            className="h-4 w-4 rounded bg-white border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer accent-indigo-600"
-          />
-          <label htmlFor="remember" className="text-xs text-slate-600 cursor-pointer select-none">
-            Keep me signed in on this device
-          </label>
-        </div>
 
         {/* Submit CTA */}
         <button
@@ -367,7 +371,7 @@ export default function LoginForm() {
             </>
           ) : (
             <>
-              <span>Sign In to Organization</span>
+              <span>Sign In</span>
               <ArrowRightIcon className="w-4 h-4" />
             </>
           )}
@@ -375,22 +379,16 @@ export default function LoginForm() {
       </form>
 
       {/* Switch to Register */}
-      <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-        <p className="text-xs text-slate-600">
-          Don&apos;t have an organization account yet?{" "}
+      <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+        <p className="text-xs text-slate-500">
+          Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="text-indigo-600 font-bold hover:text-indigo-800 hover:underline"
+            className="text-indigo-600 font-semibold hover:text-indigo-700 hover:underline"
           >
-            Register here for free (5 Audits) →
+            Create an account
           </Link>
         </p>
-      </div>
-
-      {/* Security badge at bottom of form */}
-      <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-500">
-        <ShieldCheckIcon className="w-4 h-4 text-emerald-600" />
-        <span>Secured with Bcrypt &amp; AES-256 Transport Encryption</span>
       </div>
     </div>
   );

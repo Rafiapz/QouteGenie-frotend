@@ -19,10 +19,12 @@ import {
 import { Quotation, QuotationLineItem } from "@/types/quotation";
 import { saveQuotation } from "@/services/quotationStorage";
 import { formatCurrency } from "@/utils/format";
+import PlanLimitModal from "@/components/common/PlanLimitModal";
 
 interface QuoteUploadWorkflowProps {
   onQuotationSaved: (savedQuote: Quotation) => void;
   onCancel?: () => void;
+  existingQuotesCount?: number;
 }
 
 type WorkflowStep = "upload" | "extracting" | "review";
@@ -30,10 +32,22 @@ type WorkflowStep = "upload" | "extracting" | "review";
 export function QuoteUploadWorkflow({
   onQuotationSaved,
   onCancel,
+  existingQuotesCount,
 }: QuoteUploadWorkflowProps) {
   const [step, setStep] = useState<WorkflowStep>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  const [planLimitModal, setPlanLimitModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    limitType: "uploads" | "generic";
+  }>({
+    isOpen: false,
+    message: "",
+    limitType: "uploads",
+  });
 
   const [extractProgress, setExtractProgress] = useState(0);
   const [extractStatusText, setExtractStatusText] = useState("");
@@ -90,18 +104,50 @@ export function QuoteUploadWorkflow({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    if (existingQuotesCount !== undefined && existingQuotesCount >= 4) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Quotation Upload Limit",
+        message:
+          "Free Plan limit reached: You can upload and store a maximum of 4 quotations on the Free plan. Please delete an existing quotation or upgrade your plan to upload more.",
+        limitType: "uploads",
+      });
+      return;
+    }
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       processSelectedFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (existingQuotesCount !== undefined && existingQuotesCount >= 4) {
+      if (e.target) e.target.value = "";
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Quotation Upload Limit",
+        message:
+          "Free Plan limit reached: You can upload and store a maximum of 4 quotations on the Free plan. Please delete an existing quotation or upgrade your plan to upload more.",
+        limitType: "uploads",
+      });
+      return;
+    }
     if (e.target.files && e.target.files[0]) {
       processSelectedFile(e.target.files[0]);
     }
   };
 
   const processSelectedFile = async (selectedFile: File) => {
+    if (existingQuotesCount !== undefined && existingQuotesCount >= 4) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Quotation Upload Limit",
+        message:
+          "Free Plan limit reached: You can upload and store a maximum of 4 quotations on the Free plan. Please delete an existing quotation or upgrade your plan to upload more.",
+        limitType: "uploads",
+      });
+      return;
+    }
+
     setFile(selectedFile);
     setStep("extracting");
     setExtractProgress(20);
@@ -169,9 +215,26 @@ export function QuoteUploadWorkflow({
       setTimeout(() => {
         setStep("review");
       }, 400);
-    } catch (err) {
+    } catch (err: any) {
       setStep("upload");
-      alert(err instanceof Error ? err.message : "Failed to extract quotation from PDF.");
+      const errMsg =
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to extract quotation from PDF.";
+      if (
+        err?.response?.status === 403 ||
+        errMsg.toLowerCase().includes("free plan") ||
+        errMsg.toLowerCase().includes("limit")
+      ) {
+        setPlanLimitModal({
+          isOpen: true,
+          title: "Quotation Upload Limit",
+          message: errMsg,
+          limitType: "uploads",
+        });
+      } else {
+        alert(errMsg);
+      }
     }
   };
 
@@ -284,8 +347,25 @@ export function QuoteUploadWorkflow({
 
       saveQuotation(newQuotation);
       onQuotationSaved(newQuotation);
-    } catch (err) {
-      setReviewError(err instanceof Error ? err.message : "Failed to save quotation to database.");
+    } catch (err: any) {
+      const errMsg =
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to save quotation to database.";
+      if (
+        err?.response?.status === 403 ||
+        errMsg.toLowerCase().includes("free plan") ||
+        errMsg.toLowerCase().includes("limit")
+      ) {
+        setPlanLimitModal({
+          isOpen: true,
+          title: "Quotation Upload Limit",
+          message: errMsg,
+          limitType: "uploads",
+        });
+      } else {
+        setReviewError(errMsg);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -482,10 +562,7 @@ export function QuoteUploadWorkflow({
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-indigo-600"
               >
-                <option value="INR">INR (₹)</option>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
+                <option value="INR">INR (₹) - Indian Rupee</option>
               </select>
             </div>
 
@@ -640,6 +717,19 @@ export function QuoteUploadWorkflow({
           </div>
         </div>
       )}
+
+      {/* Plan Limit Modal for Free Plan Upload Limits */}
+      <PlanLimitModal
+        isOpen={planLimitModal.isOpen}
+        onClose={() => {
+          setPlanLimitModal((prev) => ({ ...prev, isOpen: false }));
+          onCancel?.();
+        }}
+        title={planLimitModal.title}
+        message={planLimitModal.message}
+        limitType={planLimitModal.limitType}
+        onManageQuotations={onCancel}
+      />
     </div>
   );
 }

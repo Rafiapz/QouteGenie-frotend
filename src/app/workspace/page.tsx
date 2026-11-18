@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useSyncExternalStore, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -31,6 +32,8 @@ import { IntelligentQuoteAnalysisView } from "@/components/quotations/Intelligen
 import { ComparisonSidebar } from "@/components/quotations/ComparisonSidebar";
 import { getStoredQuotations } from "@/services/quotationStorage";
 import { Quotation, QuoteComparisonRecord } from "@/types/quotation";
+import { formatCurrency } from "@/utils/format";
+import PlanLimitModal from "@/components/common/PlanLimitModal";
 
 interface UserSession {
   id: string;
@@ -101,6 +104,23 @@ export default function WorkspacePage() {
   const [activeComparisonId, setActiveComparisonId] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+
+  // New comparison naming modal state
+  const [showNameComparisonModal, setShowNameComparisonModal] = useState(false);
+  const [pendingCompareQuoteIds, setPendingCompareQuoteIds] = useState<string[] | null>(null);
+  const [comparisonNameInput, setComparisonNameInput] = useState("");
+  const [matchingExistingComparison, setMatchingExistingComparison] = useState<QuoteComparisonRecord | null>(null);
+  const [isSubmittingComparison, setIsSubmittingComparison] = useState(false);
+  const [planLimitModal, setPlanLimitModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    limitType: "comparisons" | "quotes_per_comparison" | "uploads" | "generic";
+  }>({
+    isOpen: false,
+    message: "",
+    limitType: "generic",
+  });
 
   // Mobile navigation drawers
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -191,6 +211,28 @@ export default function WorkspacePage() {
   };
 
   const handleStartComparison = async (quoteIds: string[]) => {
+    if (!quoteIds || quoteIds.length < 2) return;
+
+    if (quoteIds.length > 3) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Quotation Limit Exceeded",
+        message: "You can only compare up to 3 quotations at a time on the Free plan. Please select 2 or 3 quotations.",
+        limitType: "quotes_per_comparison",
+      });
+      return;
+    }
+
+    if (comparisons.length >= 3) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Comparison Limit Reached",
+        message: "You have reached the maximum limit of 3 comparisons on the Free plan. To create a new comparison, please delete an existing one or upgrade your account.",
+        limitType: "comparisons",
+      });
+      return;
+    }
+
     try {
       const records = await getComparisonsFromApi();
       const currentSorted = [...quoteIds].sort().join(",");
@@ -198,29 +240,119 @@ export default function WorkspacePage() {
         const cSorted = [...(c.quoteIds || [])].sort().join(",");
         return cSorted === currentSorted;
       });
-
-      if (matching) {
-        setAiAnalysisQuoteIds(undefined);
-        setActiveComparisonId(matching.id);
-      } else {
-        const selectedQuotes = quotations.filter((q) => quoteIds.includes(q.id));
-        const autoName = generateDefaultComparisonName(selectedQuotes);
-        const created = await createComparisonInApi({
-          name: autoName,
-          quoteIds,
-        });
-        setComparisons((prev) => {
-          const next = [created, ...prev.filter((c) => c.id !== created.id)];
-          saveLocalStoredComparisons(next);
-          return next;
-        });
-        setAiAnalysisQuoteIds(undefined);
-        setActiveComparisonId(created.id);
-      }
+      setMatchingExistingComparison(matching || null);
     } catch {
-      setAiAnalysisQuoteIds(quoteIds);
-      setActiveComparisonId(`local_${Date.now()}`);
+      setMatchingExistingComparison(null);
     }
+
+    const selectedQuotes = quotations.filter((q) => quoteIds.includes(q.id));
+    const autoName = generateDefaultComparisonName(selectedQuotes);
+    setPendingCompareQuoteIds(quoteIds);
+    setComparisonNameInput(autoName);
+    setShowNameComparisonModal(true);
+  };
+
+  const handleConfirmCreateComparison = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!pendingCompareQuoteIds || pendingCompareQuoteIds.length < 2) return;
+
+    if (pendingCompareQuoteIds.length > 3) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Quotation Limit Exceeded",
+        message: "You can only compare up to 3 quotations at a time on the Free plan.",
+        limitType: "quotes_per_comparison",
+      });
+      return;
+    }
+
+    if (comparisons.length >= 3) {
+      setShowNameComparisonModal(false);
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Comparison Limit Reached",
+        message: "You have reached the maximum limit of 3 comparisons on the Free plan. To create a new comparison, please delete an existing one or upgrade your account.",
+        limitType: "comparisons",
+      });
+      return;
+    }
+
+    setIsSubmittingComparison(true);
+    const selectedQuotes = quotations.filter((q) => pendingCompareQuoteIds.includes(q.id));
+    const autoName = generateDefaultComparisonName(selectedQuotes);
+    const finalName = comparisonNameInput.trim() || autoName;
+
+    try {
+      let created: QuoteComparisonRecord;
+      try {
+        created = await createComparisonInApi({
+          name: finalName,
+          quoteIds: pendingCompareQuoteIds,
+        });
+      } catch (err: any) {
+        if (
+          err.status === 403 ||
+          err.message?.toLowerCase().includes("free plan") ||
+          err.message?.toLowerCase().includes("limit")
+        ) {
+          throw err;
+        }
+        console.warn("API create comparison failed, falling back to local storage:", err);
+        created = {
+          id: `local_comp_${Date.now()}`,
+          organizationId: currentUser.id || "org-local",
+          name: finalName,
+          quoteIds: pendingCompareQuoteIds,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      setComparisons((prev) => {
+        const next = [created, ...prev.filter((c) => c.id !== created.id)];
+        saveLocalStoredComparisons(next);
+        return next;
+      });
+      setAiAnalysisQuoteIds(undefined);
+      setActiveComparisonId(created.id);
+      setShowNameComparisonModal(false);
+      setPendingCompareQuoteIds(null);
+      setComparisonNameInput("");
+      setMatchingExistingComparison(null);
+      setActionNotice(`Comparison "${created.name}" created.`);
+      setTimeout(() => setActionNotice(null), 3500);
+      setActiveTab("ai_analysis");
+    } catch (err: any) {
+      if (
+        err.status === 403 ||
+        err.message?.toLowerCase().includes("free plan") ||
+        err.message?.toLowerCase().includes("limit")
+      ) {
+        setShowNameComparisonModal(false);
+        setPlanLimitModal({
+          isOpen: true,
+          title: "Free Plan Limit",
+          message: err.message || "You have reached the limits of the Free plan.",
+          limitType: err.message?.toLowerCase().includes("3 quotation")
+            ? "quotes_per_comparison"
+            : "comparisons",
+        });
+        return;
+      }
+      alert(err.message || "Failed to create comparison.");
+    } finally {
+      setIsSubmittingComparison(false);
+    }
+  };
+
+  const handleOpenMatchingComparison = () => {
+    if (!matchingExistingComparison) return;
+    setAiAnalysisQuoteIds(undefined);
+    setActiveComparisonId(matchingExistingComparison.id);
+    setShowNameComparisonModal(false);
+    setPendingCompareQuoteIds(null);
+    setComparisonNameInput("");
+    setMatchingExistingComparison(null);
     setActiveTab("ai_analysis");
   };
 
@@ -228,6 +360,59 @@ export default function WorkspacePage() {
     setAiAnalysisQuoteIds(undefined);
     setActiveComparisonId(comparisonId);
   }, []);
+
+  const handleSelectTab = useCallback(
+    (tabId: WorkspaceTab) => {
+      if (tabId === "upload" && quotations.length >= 4) {
+        setPlanLimitModal({
+          isOpen: true,
+          title: "Quotation Upload Limit",
+          message:
+            "Free Plan limit reached: You can upload and store a maximum of 4 quotations on the Free plan. Please delete an existing quotation or upgrade your plan to upload more.",
+          limitType: "uploads",
+        });
+        return;
+      }
+      if (tabId === "ai_analysis") {
+        if (comparisons.length > 0) {
+          if (!activeComparisonId || !comparisons.some((c) => c.id === activeComparisonId)) {
+            setActiveComparisonId(comparisons[0].id);
+          }
+        } else {
+          setActiveComparisonId(null);
+        }
+      }
+      setActiveTab(tabId);
+    },
+    [comparisons, activeComparisonId, quotations]
+  );
+
+  const handleOpenUpload = useCallback(() => {
+    if (quotations.length >= 4) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Quotation Upload Limit",
+        message:
+          "Free Plan limit reached: You can upload and store a maximum of 4 quotations on the Free plan. Please delete an existing quotation or upgrade your plan to upload more.",
+        limitType: "uploads",
+      });
+      return;
+    }
+    setActiveTab("upload");
+  }, [quotations]);
+
+  // Automatically ensure first comparison is active when viewing AI Quote Analysis
+  useEffect(() => {
+    if (activeTab === "ai_analysis") {
+      if (comparisons.length > 0) {
+        if (!activeComparisonId || !comparisons.some((c) => c.id === activeComparisonId)) {
+          setActiveComparisonId(comparisons[0].id);
+        }
+      } else if (activeComparisonId) {
+        setActiveComparisonId(null);
+      }
+    }
+  }, [activeTab, comparisons, activeComparisonId]);
 
   const handleNavigateToAnalysis = useCallback((quoteIds?: string[], comparisonId?: string | null) => {
     if (quoteIds) setAiAnalysisQuoteIds(quoteIds);
@@ -252,7 +437,7 @@ export default function WorkspacePage() {
     },
     {
       id: "ai_analysis" as WorkspaceTab,
-      label: "AI Sourcing Intelligence",
+      label: "AI Quote Analysis",
       icon: SparklesIcon,
       count: isMounted && comparisons.length > 0 ? comparisons.length : null,
     },
@@ -310,10 +495,10 @@ export default function WorkspacePage() {
             <button
               onClick={() => setIsMobileComparisonsOpen(true)}
               className="md:hidden flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-semibold cursor-pointer"
-              title="Open Comparisons List"
+              title="Open Sourcing Scenarios List"
             >
               <FolderIcon className="w-3.5 h-3.5" />
-              <span>Comparisons</span>
+              <span>Scenarios</span>
               {isMounted && comparisons.length > 0 && (
                 <span className="px-1 py-0.2 rounded text-[9px] font-mono bg-indigo-200/60 text-indigo-900">
                   {comparisons.length}
@@ -331,7 +516,7 @@ export default function WorkspacePage() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => handleSelectTab(item.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   isActive
                     ? "bg-slate-900 text-white shadow-xs"
@@ -424,7 +609,7 @@ export default function WorkspacePage() {
                   <button
                     key={item.id}
                     onClick={() => {
-                      setActiveTab(item.id);
+                      handleSelectTab(item.id);
                       setIsMobileMenuOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${
@@ -508,7 +693,7 @@ export default function WorkspacePage() {
               }}
               onOpenUpload={() => {
                 setIsMobileComparisonsOpen(false);
-                setActiveTab("upload");
+                handleOpenUpload();
               }}
               onCloseMobile={() => setIsMobileComparisonsOpen(false)}
             />
@@ -539,11 +724,11 @@ export default function WorkspacePage() {
               onComparisonsChange={(updated) => {
                 setComparisons(updated);
               }}
-              onOpenUpload={() => setActiveTab("upload")}
+              onOpenUpload={handleOpenUpload}
             />
 
             {/* Right Main Content Panel (Offset by fixed sidebar md:ml-72) */}
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 min-w-0 md:ml-72 h-full">
+            <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 min-w-0 md:ml-72 h-full">
               {activeTab === "ai_analysis" && (
                 <IntelligentQuoteAnalysisView
                   allQuotations={quotations}
@@ -551,7 +736,7 @@ export default function WorkspacePage() {
                   onComparisonsChange={setComparisons}
                   scopedQuoteIds={aiAnalysisQuoteIds}
                   initialComparisonId={activeComparisonId}
-                  onOpenUpload={() => setActiveTab("upload")}
+                  onOpenUpload={handleOpenUpload}
                   onComparisonChange={handleSelectComparison}
                 />
               )}
@@ -564,7 +749,7 @@ export default function WorkspacePage() {
               <QuotationsList
                 quotations={quotations}
                 onQuotationsChange={handleQuotationsChange}
-                onOpenUpload={() => setActiveTab("upload")}
+                onOpenUpload={handleOpenUpload}
                 onCompareQuotes={handleStartComparison}
               />
             )}
@@ -573,6 +758,7 @@ export default function WorkspacePage() {
               <QuoteUploadWorkflow
                 onQuotationSaved={handleQuotationSaved}
                 onCancel={() => setActiveTab("quotations")}
+                existingQuotesCount={quotations.length}
               />
             )}
 
@@ -580,6 +766,140 @@ export default function WorkspacePage() {
           </main>
         )}
       </div>
+
+      {/* Sourcing Comparison Name Modal */}
+      {isMounted && showNameComparisonModal && pendingCompareQuoteIds && createPortal(
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto min-h-screen">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95 duration-150 max-h-[88vh] flex flex-col my-auto text-left">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <FolderIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Name Sourcing Comparison
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Enter a project name to compare {pendingCompareQuoteIds.length} supplier quotations
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNameComparisonModal(false);
+                  setPendingCompareQuoteIds(null);
+                  setMatchingExistingComparison(null);
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCreateComparison} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  Comparison Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  value={comparisonNameInput}
+                  onChange={(e) => setComparisonNameInput(e.target.value)}
+                  placeholder="e.g. Q4 Fastener Sourcing Audit"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white font-medium shadow-2xs"
+                />
+              </div>
+
+              {matchingExistingComparison && (
+                <div className="p-3 rounded-2xl bg-blue-50/70 border border-blue-200/80 text-xs flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-blue-600 block tracking-wider">
+                      Existing Match Found
+                    </span>
+                    <span className="font-semibold text-slate-800 truncate block">
+                      "{matchingExistingComparison.name}"
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenMatchingComparison}
+                    className="px-3 py-1.5 bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 font-semibold text-xs rounded-xl transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    Open Existing
+                  </button>
+                </div>
+              )}
+
+              {/* Selected Quotes Preview */}
+              <div className="space-y-1.5">
+                <span className="text-xs font-semibold text-slate-700 block">
+                  Benchmarked Quotations ({pendingCompareQuoteIds.length})
+                </span>
+                <div className="max-h-48 overflow-y-auto space-y-2 pr-1 border border-slate-100 rounded-2xl p-2 bg-slate-50/50">
+                  {quotations
+                    .filter((q) => pendingCompareQuoteIds.includes(q.id))
+                    .map((q) => (
+                      <div
+                        key={q.id}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs"
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <span className="font-bold text-slate-900 block truncate">
+                            {q.supplierName}
+                          </span>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            #{q.quoteNumber} • {q.items?.length || 0} items
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-mono font-bold text-slate-900">
+                            {formatCurrency(q.totalAmount)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNameComparisonModal(false);
+                    setPendingCompareQuoteIds(null);
+                    setMatchingExistingComparison(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingComparison || !comparisonNameInput.trim()}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl shadow-xs cursor-pointer transition-colors"
+                >
+                  {isSubmittingComparison ? "Creating..." : "Create Comparison"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Plan Limit Modal */}
+      <PlanLimitModal
+        isOpen={planLimitModal.isOpen}
+        onClose={() => setPlanLimitModal((prev) => ({ ...prev, isOpen: false }))}
+        title={planLimitModal.title}
+        message={planLimitModal.message}
+        limitType={planLimitModal.limitType}
+        onManageComparisons={() => setActiveTab("ai_analysis")}
+        onManageQuotations={() => setActiveTab("quotations")}
+      />
     </div>
   );
 }

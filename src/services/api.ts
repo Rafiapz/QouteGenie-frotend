@@ -221,11 +221,35 @@ export async function saveQuoteToApi(payload: SaveQuotePayload) {
   return response.data.data;
 }
 
-export async function getQuotesFromApi() {
+export interface GetQuotesFilterOptions {
+  search?: string;
+  supplier?: string;
+  sortBy?: "date" | "amount_asc" | "amount_desc" | "delivery" | "items";
+  signal?: AbortSignal;
+}
+
+export async function getQuotesFromApi(filters?: GetQuotesFilterOptions): Promise<any[]> {
   try {
-    const response = await apiClient.get<{ success: true; data: any[] }>("/quotes");
+    const params: Record<string, string> = {};
+    if (filters?.search && filters.search.trim()) {
+      params.search = filters.search.trim();
+    }
+    if (filters?.supplier && filters.supplier !== "all") {
+      params.supplier = filters.supplier;
+    }
+    if (filters?.sortBy) {
+      params.sortBy = filters.sortBy;
+    }
+
+    const response = await apiClient.get<{ success: true; data: any[] }>("/quotes", {
+      params,
+      signal: filters?.signal,
+    });
     return response.data.data || [];
-  } catch {
+  } catch (err: any) {
+    if (err?.name === "CanceledError" || err?.name === "AbortError" || err?.code === "ERR_CANCELED") {
+      throw err;
+    }
     return [];
   }
 }

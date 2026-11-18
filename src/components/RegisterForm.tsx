@@ -21,23 +21,26 @@ const PLANS = [
   {
     id: 1,
     name: "Starter",
-    price: "$0",
-    description: "5 quote audits / mo",
+    price: "₹0",
+    description: "Full access to quotation analysis & sourcing",
     badge: "Free",
+    available: true,
   },
   {
     id: 2,
     name: "Professional",
-    price: "$79/mo",
-    description: "50 audits, 5 seats",
-    badge: "Popular",
+    price: "Coming Soon",
+    description: "Multi-seat sourcing & team workflows",
+    badge: "Upcoming",
+    available: false,
   },
   {
     id: 3,
     name: "Enterprise",
-    price: "$249/mo",
-    description: "Unlimited audits & ERP sync",
-    badge: "Scale",
+    price: "Coming Soon",
+    description: "Custom ERP sync & volume audits",
+    badge: "Upcoming",
+    available: false,
   },
 ];
 
@@ -50,7 +53,6 @@ export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(1);
-  const [agreedToTerms, setAgreedToTerms] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -123,10 +125,6 @@ export default function RegisterForm() {
     }
     if (password !== confirmPassword) {
       setErrorMessage("Passwords do not match. Please re-enter the identical password.");
-      return;
-    }
-    if (!agreedToTerms) {
-      setErrorMessage("Please accept the terms of service to continue.");
       return;
     }
 
@@ -288,15 +286,12 @@ export default function RegisterForm() {
       <div className="absolute top-0 right-0 w-72 h-72 bg-indigo-50/70 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
-      <div className="mb-8 relative z-10">
-        <span className="text-xs uppercase font-bold tracking-widest text-indigo-600">
-          Get Started with QuoteGenie
-        </span>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
-          Create Organization Account
+      <div className="mb-6 relative z-10">
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+          Create an Account
         </h2>
-        <p className="mt-2 text-sm text-slate-500">
-          5 free deep audits • No credit card required • Immediate activation
+        <p className="mt-1 text-sm text-slate-500">
+          Enter your organization details to get started.
         </p>
       </div>
 
@@ -444,19 +439,26 @@ export default function RegisterForm() {
         {/* Plan Selector */}
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-2">
-            Select Organization Plan Tier
+            Organization Plan Tier
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {PLANS.map((plan) => {
               const isSelected = selectedPlan === plan.id;
+              const isAvailable = plan.available;
               return (
                 <div
                   key={plan.id}
-                  onClick={() => setSelectedPlan(plan.id)}
-                  className={`p-3 rounded-2xl border cursor-pointer transition-all ${
+                  onClick={() => {
+                    if (isAvailable) {
+                      setSelectedPlan(plan.id);
+                    }
+                  }}
+                  className={`p-3 rounded-2xl border transition-all ${
                     isSelected
-                      ? "border-indigo-600 bg-indigo-50/60 shadow-xs ring-1 ring-indigo-600"
-                      : "border-slate-200 bg-slate-50/70 hover:border-slate-300"
+                      ? "border-indigo-600 bg-indigo-50/60 shadow-xs ring-1 ring-indigo-600 cursor-pointer"
+                      : isAvailable
+                      ? "border-slate-200 bg-slate-50/70 hover:border-slate-300 cursor-pointer"
+                      : "border-slate-200 bg-slate-50/40 opacity-55 cursor-not-allowed select-none"
                   }`}
                 >
                   <div className="flex justify-between items-center mb-1">
@@ -465,7 +467,9 @@ export default function RegisterForm() {
                       className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
                         isSelected
                           ? "bg-indigo-600 text-white"
-                          : "bg-slate-200 text-slate-600"
+                          : isAvailable
+                          ? "bg-slate-200 text-slate-600"
+                          : "bg-slate-200/80 text-slate-500"
                       }`}
                     >
                       {plan.badge}
@@ -481,21 +485,6 @@ export default function RegisterForm() {
               );
             })}
           </div>
-        </div>
-
-        {/* Terms Agreement */}
-        <div className="flex items-start gap-2.5 pt-1">
-          <input
-            id="terms"
-            type="checkbox"
-            checked={agreedToTerms}
-            onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded bg-white border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer accent-indigo-600"
-          />
-          <label htmlFor="terms" className="text-xs text-slate-500 leading-relaxed cursor-pointer">
-            I agree to QuoteGenie&apos;s <span className="text-indigo-600 hover:underline">Terms of Service</span> and{" "}
-            <span className="text-indigo-600 hover:underline">Privacy Policy</span>.
-          </label>
         </div>
 
         {/* Submit CTA */}
@@ -530,7 +519,7 @@ export default function RegisterForm() {
             </>
           ) : (
             <>
-              <span>Create Free Account &amp; Start Auditing</span>
+              <span>Create Account</span>
               <ArrowRightIcon className="w-4 h-4" />
             </>
           )}
@@ -538,22 +527,16 @@ export default function RegisterForm() {
       </form>
 
       {/* Switch to Login */}
-      <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-        <p className="text-xs text-slate-600">
-          Already have an organization account?{" "}
+      <div className="mt-6 pt-5 border-t border-slate-100 text-center">
+        <p className="text-xs text-slate-500">
+          Already have an account?{" "}
           <Link
             href="/login"
-            className="text-indigo-600 font-bold hover:text-indigo-800 hover:underline"
+            className="text-indigo-600 font-semibold hover:text-indigo-700 hover:underline"
           >
-            Sign in here →
+            Sign in
           </Link>
         </p>
-      </div>
-
-      {/* Security badge at bottom of form */}
-      <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-500">
-        <ShieldCheckIcon className="w-4 h-4 text-emerald-600" />
-        <span>Enterprise AES-256 Encryption &amp; Salted Bcrypt Hashing</span>
       </div>
     </div>
   );

@@ -25,12 +25,13 @@ import {
   removeComparisonFromLocalCache,
 } from "@/services/comparisonStorage";
 import { formatCurrency } from "@/utils/format";
+import PlanLimitModal from "@/components/common/PlanLimitModal";
 
 interface ComparisonSidebarProps {
   comparisons: QuoteComparisonRecord[];
   allQuotations: Quotation[];
   activeComparisonId: string | null;
-  onSelectComparison: (comparisonId: string) => void;
+  onSelectComparison: (comparisonId: string | null) => void;
   onComparisonsChange: (updated: QuoteComparisonRecord[]) => void;
   onOpenUpload: () => void;
   className?: string;
@@ -61,6 +62,16 @@ export function ComparisonSidebar({
   const [newModalSelectedQuoteIds, setNewModalSelectedQuoteIds] = useState<
     string[]
   >([]);
+  const [planLimitModal, setPlanLimitModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    limitType: "comparisons" | "quotes_per_comparison" | "generic";
+  }>({
+    isOpen: false,
+    message: "",
+    limitType: "generic",
+  });
 
   // Modal 2: Rename Comparison
   const [renameTarget, setRenameTarget] = useState<QuoteComparisonRecord | null>(
@@ -158,7 +169,16 @@ export function ComparisonSidebar({
 
   // Open Create Modal
   const handleOpenCreateModal = () => {
-    const initialQuotes = allQuotations.slice(0, 2);
+    if (comparisons.length >= 3) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Comparison Limit Reached",
+        message: "You have reached the maximum limit of 3 comparisons on the Free plan. To create a new comparison, please delete an existing one or upgrade your account.",
+        limitType: "comparisons",
+      });
+      return;
+    }
+    const initialQuotes = allQuotations.slice(0, Math.min(allQuotations.length, 3));
     setNewModalSelectedQuoteIds(initialQuotes.map((q) => q.id));
     setNewModalName(generateDefaultComparisonName(initialQuotes));
     setShowNewModal(true);
@@ -167,6 +187,25 @@ export function ComparisonSidebar({
   // Confirm Create Comparison
   const handleConfirmCreateComparison = async () => {
     if (newModalSelectedQuoteIds.length < 2) return;
+    if (newModalSelectedQuoteIds.length > 3) {
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Quotation Limit Exceeded",
+        message: "You can only compare up to 3 quotations at a time on the Free plan.",
+        limitType: "quotes_per_comparison",
+      });
+      return;
+    }
+    if (comparisons.length >= 3) {
+      setShowNewModal(false);
+      setPlanLimitModal({
+        isOpen: true,
+        title: "Comparison Limit Reached",
+        message: "You have reached the maximum limit of 3 comparisons on the Free plan. To create a new comparison, please delete an existing one or upgrade your account.",
+        limitType: "comparisons",
+      });
+      return;
+    }
     setIsProcessingApi(true);
 
     const quotes = allQuotations.filter((q) =>
@@ -186,7 +225,23 @@ export function ComparisonSidebar({
       saveLocalStoredComparisons(updated);
       setShowNewModal(false);
       onSelectComparison(savedInDb.id);
-    } catch (err) {
+    } catch (err: any) {
+      if (
+        err.status === 403 ||
+        err.message?.toLowerCase().includes("free plan") ||
+        err.message?.toLowerCase().includes("limit")
+      ) {
+        setShowNewModal(false);
+        setPlanLimitModal({
+          isOpen: true,
+          title: "Free Plan Limit",
+          message: err.message || "You have reached the limits of the Free plan.",
+          limitType: err.message?.toLowerCase().includes("3 quotation")
+            ? "quotes_per_comparison"
+            : "comparisons",
+        });
+        return;
+      }
       console.error("Failed to save comparison to DB, using local fallback:", err);
       const fallbackRecord: QuoteComparisonRecord = {
         id: `local_comp_${Date.now()}`,
@@ -245,7 +300,11 @@ export function ComparisonSidebar({
     onComparisonsChange(finalList);
 
     if (activeComparisonId === deleteConfirmId) {
-      onSelectComparison("all");
+      if (finalList.length > 0) {
+        onSelectComparison(finalList[0].id);
+      } else {
+        onSelectComparison(null);
+      }
     }
 
     setDeleteConfirmId(null);
@@ -265,7 +324,7 @@ export function ComparisonSidebar({
           <div className="flex items-center gap-2">
             <FolderIcon className="w-4 h-4 text-indigo-600" />
             <span className="font-bold text-xs text-slate-900 uppercase tracking-wider">
-              Comparisons
+              Sourcing Scenarios
             </span>
             <span className="px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 text-[10px] font-mono font-bold">
               {comparisons.length}
@@ -301,7 +360,7 @@ export function ComparisonSidebar({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search comparisons..."
+            placeholder="Search scenarios..."
             className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white"
           />
         </div>
@@ -317,7 +376,7 @@ export function ComparisonSidebar({
               onCloseMobile?.();
             }}
             className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${
-              activeComparisonId === "all" || activeComparisonId === null
+              activeComparisonId === "all"
                 ? "bg-indigo-50/70 border-indigo-300 text-indigo-950 font-semibold shadow-2xs"
                 : "bg-white hover:bg-slate-50 border-slate-200/70 text-slate-700"
             }`}
@@ -326,23 +385,23 @@ export function ComparisonSidebar({
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-1">
                 <span className="font-bold truncate text-slate-900 text-xs">
-                  All Quotations Benchmark
+                  Global Sourcing Baseline
                 </span>
                 <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-slate-200/70 text-slate-700 shrink-0">
                   {allQuotations.length} quotes
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                Global organization baseline
+                All uploaded vendor quotations
               </p>
             </div>
           </div>
         </div>
 
-        {/* Section Label: Saved Projects */}
+        {/* Section Label: Saved Scenarios */}
         <div className="pt-2">
           <div className="px-2 py-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            <span>Saved Projects</span>
+            <span>Saved Scenarios</span>
             <span>{filteredComparisons.length}</span>
           </div>
 
@@ -485,12 +544,20 @@ export function ComparisonSidebar({
             <div className="space-y-3 pt-1">
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Project Title
+                  Project Title <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
+                  autoFocus
+                  required
                   value={newModalName}
                   onChange={(e) => setNewModalName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newModalSelectedQuoteIds.length >= 2 && !isProcessingApi && newModalName.trim()) {
+                      e.preventDefault();
+                      handleConfirmCreateComparison();
+                    }
+                  }}
                   placeholder="e.g. Acme vs Beta Precision Sourcing"
                   className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
@@ -517,11 +584,21 @@ export function ComparisonSidebar({
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {
-                              setNewModalSelectedQuoteIds((prev) =>
-                                prev.includes(q.id)
-                                  ? prev.filter((id) => id !== q.id)
-                                  : [...prev, q.id]
-                              );
+                              setNewModalSelectedQuoteIds((prev) => {
+                                if (prev.includes(q.id)) {
+                                  return prev.filter((id) => id !== q.id);
+                                }
+                                if (prev.length >= 3) {
+                                  setPlanLimitModal({
+                                    isOpen: true,
+                                    title: "Quotation Limit Exceeded",
+                                    message: "You can only compare up to 3 quotations at a time on the Free plan.",
+                                    limitType: "quotes_per_comparison",
+                                  });
+                                  return prev;
+                                }
+                                return [...prev, q.id];
+                              });
                             }}
                             className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
                           />
@@ -782,6 +859,14 @@ export function ComparisonSidebar({
         </div>,
         document.body
       )}
+      {/* Plan Limit Modal */}
+      <PlanLimitModal
+        isOpen={planLimitModal.isOpen}
+        onClose={() => setPlanLimitModal((prev) => ({ ...prev, isOpen: false }))}
+        title={planLimitModal.title}
+        message={planLimitModal.message}
+        limitType={planLimitModal.limitType}
+      />
     </aside>
   );
 }

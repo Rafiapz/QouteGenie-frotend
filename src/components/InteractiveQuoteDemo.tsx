@@ -17,33 +17,31 @@ const INITIAL_ITEMS: QuoteItem[] = [
     id: "item-1",
     description: "Next.js Full-Stack Application Architecture",
     quantity: 1,
-    unitPrice: 3800,
+    unitPrice: 185000,
   },
   {
     id: "item-2",
     description: "Interactive UI/UX Design System & Prototypes",
     quantity: 1,
-    unitPrice: 1500,
+    unitPrice: 75000,
   },
   {
     id: "item-3",
     description: "Cloud Database (PostgreSQL + Prisma) Deployment",
     quantity: 1,
-    unitPrice: 950,
+    unitPrice: 45000,
   },
 ];
 
 const CURRENCIES = [
-  { code: "USD", symbol: "$" },
-  { code: "EUR", symbol: "€" },
-  { code: "GBP", symbol: "£" },
+  { code: "INR", symbol: "₹" },
 ];
 
 export default function InteractiveQuoteDemo() {
   const [currency, setCurrency] = useState(CURRENCIES[0]);
   const [items, setItems] = useState<QuoteItem[]>(INITIAL_ITEMS);
-  const [taxRate, setTaxRate] = useState<number>(10);
-  const [discount, setDiscount] = useState<number>(250);
+  const [taxRate, setTaxRate] = useState<number>(18);
+  const [discount, setDiscount] = useState<number>(15000);
   const [status, setStatus] = useState<"Draft" | "Pending Approval" | "Accepted">("Draft");
 
   // Calculations
